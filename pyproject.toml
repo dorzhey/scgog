@@ -1,0 +1,18 @@
+[project]
+name = "scgog"
+version = "0.0.1"
+authors = [
+  { name="dorzhey", email="dorzhey@umich.edu" },
+]
+description = "Inspired by BIOINF576"
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+Homepage = "https://github.com/dorzhey/scgog"
+Issues = "https://github.com/dorzhey/scgog/issues"
