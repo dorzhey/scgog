@@ -2,6 +2,6 @@
 - Choose and use data processing pipelines
     - Implement usage of libraries
     - Implement choice by a user in code or command line
-- Create feature extractio and engineering pipeline
+- Create feature extraction and engineering pipeline
 - Implement most common plot and figure creating
 - Develop ML pipeline 
