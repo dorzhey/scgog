@@ -1,18 +1,35 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+[tool.setuptools.packages.find]
+where = ["."]  # list of folders that contain the packages (["."] by default)
+include = ["scgog"]  # package names should match these glob patterns (["*"] by default)
+exclude = ["design_documents","tests"]  # exclude packages matching these glob patterns (empty by default)
+namespaces = false  # to disable scanning PEP 420 namespaces (true by default)
+
 [project]
 name = "scgog"
 version = "0.0.1"
-authors = [
-  { name="dorzhey", email="dorzhey@umich.edu" },
-]
 description = "Inspired by BIOINF576"
 readme = "README.md"
 requires-python = ">=3.8"
+authors = [
+  { name = "dorzhey", email = "dorzhey@umich.edu" }
+]
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
+dependencies = [
+    "numpy>=1.19.2",
+    "pandas>=1.1.3",
+    "scikit-learn>=0.23.2"
+]
 
 [project.urls]
 Homepage = "https://github.com/dorzhey/scgog"
 Issues = "https://github.com/dorzhey/scgog/issues"
+
+[project.scripts]
+scgog = "scgog.cli:main"

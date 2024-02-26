@@ -7,3 +7,7 @@ Repository dedicated to optimize use of common Data Processing, Feature Exractio
 - Output: Dataset and Model checkpoint
 
 Inspired by BIOINF579 class.
+
+
+Tutorial:
+pip install -r requirements.txt

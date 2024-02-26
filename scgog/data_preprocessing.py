@@ -1,48 +1,46 @@
 import pandas as pd
+import muon as mu
+import scanpy as sc
 
-counts_rna = pd.read_csv("../data/counts_rna.csv", index_col = 0)
-counts_atac = pd.read_csv("../data/counts_atac.csv", index_col = 0)
-label_rna = pd.read_csv("../data/anno_rna.txt", header = None)
-label_atac = pd.read_csv("../data/anno_atac.txt", header = None)
 
-def normalize_scrna_data(data):
-    """
-    Normalize scRNA-seq data using a simple log-normalization method.
+def preprocess_omics_data(file_path):
+    mdata = mu.read_10x_h5(file_path)
+    mdata.var_names_make_unique()
     
-    Parameters:
-    - data (pandas.DataFrame): A DataFrame where rows represent cells and columns represent genes.
-    
-    Returns:
-    - pandas.DataFrame: Log-normalized scRNA-seq data.
-    """
-    import numpy as np
-    
-    # Add a small value to avoid log(0)
-    normalized_data = np.log1p(data)
-    return normalized_data
+    return mdata
 
-def quality_checks(data):
-    """
-    Placeholder function for performing quality checks on scRNA-seq or scATAC-seq data.
-    
-    Parameters:
-    - data (pandas.DataFrame): The dataset to be checked.
-    
-    Returns:
-    - bool: True if data passes the checks, False otherwise.
-    """
-    # Implement quality checks here
-    pass
+def read_ann_data(file_path):
+    ann_data = pd.read_csv(file_path, sep='\t', compression='gzip')
+    return ann_data
 
-def scale_data(data):
-    """
-    Placeholder function for scaling data post-normalization.
+# QUALITY CONTROL
+def quality_control(mdata):
+    # Compute QC metrics for RNA
+    mdata['rna'].var['mt'] = mdata['rna'].var_names.str.startswith('MT-')
+    sc.pp.calculate_qc_metrics(mdata['rna'], qc_vars=['mt'], percent_top=None, log1p=False, inplace=True)
     
-    Parameters:
-    - data (pandas.DataFrame): Normalized data to be scaled.
+    # Compute QC metrics for ATAC
+    sc.pp.calculate_qc_metrics(mdata['atac'], percent_top=None, log1p=False, inplace=True)
     
-    Returns:
-    - pandas.DataFrame: Scaled data.
+    mu.pp.filter_obs(mdata['rna'], 'n_genes_by_counts', lambda x: (x >= 200) & (x < 5000))
+    mu.pp.filter_obs(mdata['rna'], 'total_counts', lambda x: x < 15000)
+    mu.pp.filter_obs(mdata['rna'], 'pct_counts_mt', lambda x: x < 20)
+    
+    # Filter ATAC based on quality metrics
+    mu.pp.filter_obs(mdata['atac'], 'n_genes_by_counts', lambda x: (x >= 2000) & (x <= 15000))
+    mu.pp.filter_obs(mdata['atac'], 'total_counts', lambda x: (x >= 4000) & (x <= 40000))
+    
+    # Intersect observations to keep only cells present in both modalities
+    mu.pp.intersect_obs(mdata)
+    
+    return mdata
+
+def merge_data(mdata):
     """
-    # Implement scaling here
-    pass
+    Merges scRNA-seq and scATAC-seq data into a single MuData object.
+    :param adata_rna: An AnnData object containing the scRNA-seq data.
+    :param adata_atac: An AnnData object containing the scATAC-seq data.
+    :return: A MuData object containing the merged datasets.
+    """
+    return mu.MuData({'rna': mdata['rna'], 'atac': mdata['atac']})
+
