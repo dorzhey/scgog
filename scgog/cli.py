@@ -6,7 +6,7 @@ def windows_path_parser(path):
     return pathlib.PureWindowsPath(path).as_posix()
 
 def yes_no_answer(input_msg, end_msg, func, param):
-    while True:
+    for _ in range(3):
 
         choice = input(input_msg+" [y/n] ")
         if choice == 'y':
@@ -17,6 +17,7 @@ def yes_no_answer(input_msg, end_msg, func, param):
             return param
         else:        
             print("incorrect input, try again")
+    print("exiting the process")
 
 
 def main():
