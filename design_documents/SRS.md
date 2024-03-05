@@ -16,9 +16,7 @@ Version: 1.0
     development project. The estimated cost is \$0 and estimated
     development time is 3 months.
 
-```{=html}
-<!-- -->
-```
+
 -   **Overview --** System will centralize most common Data Analysis
     techniques on Single Cell data. Most of techniques are focused on
     but are not limited to Machine Learning application.
@@ -60,9 +58,9 @@ steps:
 
     a.  Cross-validation on reduced dataset
 
-    b.  Benchmarking of 5 different models by choice
+    b.  Hyperparameter optimization of the chosen model
 
-    c.  Hyperparameter optimization of the chosen model
+    c.  Benchmarking of different models
 
 **Data Requirements**
 
