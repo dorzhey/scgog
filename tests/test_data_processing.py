@@ -104,3 +104,35 @@ def test_merge_data():
     assert 'atac' in mdata.mod, "Merged MuData object should contain ATAC modality"
     assert isinstance(mdata.mod['rna'], mu.AnnData), "RNA data should be an AnnData object"
     assert isinstance(mdata.mod['atac'], mu.AnnData), "ATAC data should be an AnnData object"
+
+
+def test_normalize_data(test_mdata):
+    
+    #Normalize the data
+    normalized_mdata = normalize_data(test_mdata)
+    
+    # Ensure RNA normalization operations are correctly applied
+    assert 'rna' in normalized_mdata
+    assert 'log1p' in normalized_mdata['rna'].uns
+    assert 'pca' in normalized_mdata['rna'].uns
+    assert 'hvg' in normalized_mdata['rna'].uns
+    assert 'counts' in normalized_mdata['rna'].layers
+    assert normalized_mdata['rna'].X.shape == mdata['rna'].X.shape
+    
+    # Check that every cell count has the same total counts after normalize_total
+    before_total_counts = normalized_mdata['rna'].X.sum(axis=1)
+    after_total_counts = normalized_mdata['rna'].X.sum(axis=1)
+    assert (before_total_counts == after_total_counts).all()
+    
+    # Ensure ATAC normalization operations are correctly applied
+    assert 'atac' in normalized_mdata
+    assert 'log1p' in normalized_mdata['atac'].uns
+    assert 'pca' in normalized_mdata['atac'].uns
+    assert 'hvg' in normalized_mdata['atac'].uns
+    assert 'counts' in normalized_mdata['atac'].layers
+    assert normalized_mdata['atac'].X.shape == mdata['atac'].X.shape
+    
+    # Check that every cell count has the same total counts after normalize_total
+    before_total_counts = normalized_mdata['atac'].X.sum(axis=1)
+    after_total_counts = normalized_mdata['atac'].X.sum(axis=1)
+    assert (before_total_counts == after_total_counts).all()
