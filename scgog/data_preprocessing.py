@@ -73,3 +73,34 @@ def merge_data(mdata: mu.MuData) -> mu.MuData:
     - mu.MuData: A MuData object containing the merged datasets.
     """
     return mu.MuData({'rna': mdata['rna'], 'atac': mdata['atac']})
+
+
+def normalize_data(mdata: mu.MuData) -> mu.MuData:
+    """
+    Normalize and Scale both scRNA-seq and scATAC-seq data.
+    
+    Parameters:
+    - mdata (mu.MuData): MuData object containing RNA and ATAC data.
+    
+    Returns:
+    - mu.MuData: A MuData object containing normalized and scaled data.
+    """
+    #Normalize data for RNA
+    mdata['rna'].layers["counts"] = mdata['rna'].X.copy()
+    sc.pp.normalize_total(mdata['rna'], target_sum=1e4)
+    sc.pp.log1p(mdata['rna'])
+
+    sc.pp.highly_variable_genes(mdata['rna'], min_mean=0.02, max_mean=4, min_disp=0.5)
+    sc.pp.scale(mdata['rna'], max_value=10)
+    sc.tl.pca(mdata['rna'], svd_solver='arpack')
+    
+    #Normalize data for ATAC
+    mdata['atac'].layers["counts"] = mdata['atac'].X.copy()
+    sc.pp.normalize_total(mdata['atac'], target_sum=1e4)
+    sc.pp.log1p(mdata['atac'])
+
+    sc.pp.highly_variable_genes(mdata['atac'], min_mean=0.02, max_mean=4, min_disp=0.5)
+    sc.pp.scale(mdata['atac'], max_value=10)
+    sc.tl.pca(mdata['atac'], svd_solver='arpack')
+    
+    return mdata
