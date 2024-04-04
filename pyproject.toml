@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools.packages.find]
 where = ["."]  # list of folders that contain the packages (["."] by default)
 include = ["scgog"]  # package names should match these glob patterns (["*"] by default)
-exclude = ["design_documents","tests"]  # exclude packages matching these glob patterns (empty by default)
+exclude = ["design_documents","tests","data"]  # exclude packages matching these glob patterns (empty by default)
 namespaces = false  # to disable scanning PEP 420 namespaces (true by default)
 
 [project]
@@ -32,4 +32,6 @@ Homepage = "https://github.com/dorzhey/scgog"
 Issues = "https://github.com/dorzhey/scgog/issues"
 
 [project.scripts]
-scgog = "scgog.cli:main"
+preprocess = "scgog.cli:preprocess"
+visualize = "scgog.cli:visualize"
+ml_benchmarking = "scgog.cli:ml_benchmarking"
