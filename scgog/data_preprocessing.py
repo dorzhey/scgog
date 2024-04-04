@@ -4,15 +4,22 @@ import scanpy as sc
 from muon import atac as ac
 import numpy as np
 import os
+import warnings
 
 class DataPreprocessor():
     def __init__(self, h5_file_path, ann_file_path) -> None:
-        self.mdata = mu.read_10x_h5(h5_file_path)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            self.mdata = mu.read_10x_h5(h5_file_path)
+        print("After reading object has ", self.mdata.shape[0], "observations", self.mdata.shape[1], "variables")
         self.mdata.var_names_make_unique()
+        print("After make_unique object has ", self.mdata.shape[0], "observations", self.mdata.shape[1], "variables")
         self.quality_control()
-        print(self.mdata.shape)
+        print("After quality control object has ", self.mdata.shape[0], "observations", self.mdata.shape[1], "variables")
         self.normalize_data()
+        print("After normalization object has ", self.mdata.shape[0], "observations", self.mdata.shape[1], "variables")
         self.merge_ann_data(ann_file_path)
+        print("After merging with annotation object has ", self.mdata.shape[0], "observations", self.mdata.shape[1], "variables")
 
     def quality_control(self) -> mu.MuData:
         """
@@ -43,7 +50,6 @@ class DataPreprocessor():
         mu.pp.filter_obs(mdata['atac'], 'total_counts', lambda x: (x >= 4000) & (x <= 40000))
         # Intersect observations to keep only cells present in both modalities
         mu.pp.intersect_obs(mdata)
-        
 
 
     def normalize_data(self) -> mu.MuData:
@@ -72,7 +78,6 @@ class DataPreprocessor():
         mdata['atac'].obsm['X_lsi'] = mdata['atac'].obsm['X_lsi'][:,1:]
         mdata['atac'].varm["LSI"] = mdata['atac'].varm["LSI"][:,1:]
         mdata['atac'].uns["lsi"]["stdev"] = mdata['atac'].uns["lsi"]["stdev"][1:]
-        self.mdata = mdata
         
 
     def merge_ann_data(self, file_path: str) -> mu.MuData:
@@ -86,49 +91,38 @@ class DataPreprocessor():
         Returns:
         - mu.MuData: A MuData object containing normalized and scaled data.
         """
-        # read cellranger peak annotation
-        peak_annotation = pd.read_csv(file_path, sep='\t')
 
-        # add the interval to match atac var
+        # read cellranger peak annotation with vectorized interval creation
+        peak_annotation = pd.read_csv(file_path, sep='\t')
         peak_annotation['interval'] = peak_annotation['chrom'] + ':' + peak_annotation['start'].astype(str) + '-' + peak_annotation['end'].astype(str)
 
-        # merge dupes in cellranger peak annotation
-        unique_interval = np.unique(peak_annotation['interval'])
-        ind_col = []
-        g_col = []
-        d_col = []
-        t_col = []
-        for iu in unique_interval:
-            ind = peak_annotation.index[peak_annotation['interval'] == iu].tolist()
-            ind_col.append(iu)
-            g_col.append(peak_annotation.iloc[ind]['gene'].tolist())
-            d_col.append(peak_annotation.iloc[ind]['distance'].tolist())
-            t_col.append(peak_annotation.iloc[ind]['peak_type'].tolist())
+        # Using groupby to handle duplicates and aggregate values
+        aggregated = peak_annotation.groupby('interval').agg({
+        'gene': lambda x: ';'.join(x.dropna().astype(str)),
+        'distance': lambda x: ';'.join(map(str, x.dropna())),
+        'peak_type': lambda x: ';'.join(x.dropna().astype(str))
+        }).reset_index()
 
-        pivot_annotation = {'interval': ind_col, 
-                            'gene': g_col, 
-                            'distance': d_col, 
-                            'peak_type': t_col}
-        pivot_annotation = pd.DataFrame(pivot_annotation)
-        
+        # Merge directly without creating extra DataFrames
         mdata = self.mdata
-        # merge the cellranger peak annotation to the muon/anndata data
-        mdata['atac'].var = mdata['atac'].var.merge(pivot_annotation, on='interval', how='left')
-        # put back the interval var names for the atac modality
-        mdata.mod['atac'].var_names = mdata.mod['atac'].var.interval
-        self.mdata = mdata
+        mdata['atac'].var = pd.merge(mdata['atac'].var, aggregated, on='interval', how='left')
+
+        # Update the var_names if necessary
+        for col in ['gene', 'distance', 'peak_type']:
+            if col in mdata['atac'].var.columns:
+                mdata['atac'].var[col] = mdata['atac'].var[col].apply(lambda x: str(x) if not pd.isna(x) else '')
     
-    def save_data(self):
-        self.mdata.write('mudata.h5mu')
-        file_dir = os.path.dirname(__file__)
-        save_path = os.path.join(file_dir, 'mudata.h5mu')
-        return save_path
+    # def save_data(self):
+    #     self.mdata.write('mudata.h5mu')
+    #     file_dir = os.path.dirname(__file__)
+    #     save_path = os.path.join(file_dir, 'mudata.h5mu')
+    #     return save_path
 
 
 
 def preprocess_omics_data(h5_file_path, ann_file_path):
     processor = DataPreprocessor(h5_file_path, ann_file_path)
-    return processor.save_data()
+    return processor.mdata
     
 
 #preprocess_omics_data("\\Users\Dorzhey\\OneDrive\\Desktop\\lab\\projects\\re_design\\10x_data\\pbmc_granulocyte_sorted_3k_filtered_feature_bc_matrix.h5",

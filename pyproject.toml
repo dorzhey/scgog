@@ -32,6 +32,4 @@ Homepage = "https://github.com/dorzhey/scgog"
 Issues = "https://github.com/dorzhey/scgog/issues"
 
 [project.scripts]
-preprocess = "scgog.cli:preprocess"
-visualize = "scgog.cli:visualize"
-ml_benchmarking = "scgog.cli:ml_benchmarking"
+main = "scgog.cli:main"

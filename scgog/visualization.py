@@ -2,10 +2,10 @@ import muon as mu
 import scanpy as sc
 import os
 
-def visualize_umap(mdata_path, saved=True):
+def visualize_umap(mdata, saved=True):
     file_name='umap_plot.png'
     output_dir='./plots'
-    mdata = mu.read(mdata_path)
+    
     # compute the neighbors for only rna
     sc.pp.neighbors(mdata['rna'], n_neighbors=10, n_pcs=20)
     # compute the neighbors for only atac

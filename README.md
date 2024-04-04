@@ -17,10 +17,9 @@ python -m build
 pip install dist/scgog-0.0.1.tar.gz
 
 commands:
-preprocess 
-Launches CLI to guide the used through preprocessing
-visualize
-Launches CLI to guide the used through visualizization
-ml_benchmarking
-Launches CLI to guide the used through ML benchmarking
+main
+Launches CLI to guide through all steps
+
+for more look for tutorial.ipynb
+
 

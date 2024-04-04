@@ -8,9 +8,9 @@ import pandas as pd
 import muon as mu
 
 # Assuming 'get_clustering_based_loader' returns a DataLoader for our dataset
-from data_loader import get_loader
+from scgog.data_loader import get_loader
 
-def benchmark_models(mdata_path,label="gene", batch_size=32, shuffle=True):
+def benchmark_models(mdata, batch_size=32, shuffle=True):
     """
     Benchmarks several ML models on a dataset with clustering-based labels.
 
@@ -18,10 +18,10 @@ def benchmark_models(mdata_path,label="gene", batch_size=32, shuffle=True):
     - mdata_path (str): Path to the .h5mu file containing omics data.
     """
     # Load the preprocessed mdata
-    mdata = mu.read(mdata_path)
+    
     
     # Load the dataset
-    loader = get_loader(mdata, label, batch_size, shuffle)
+    loader = get_loader(mdata, batch_size, shuffle)
 
     # Convert DataLoader to numpy arrays for scikit-learn
     features, labels = next(iter(loader))
