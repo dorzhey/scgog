@@ -70,7 +70,7 @@ class MultiModalDataset(Dataset):
         """
         return torch.tensor(self.features[idx], dtype=torch.float), torch.tensor(self.labels[idx], dtype=torch.long)
     
-def get_loader(mdata, batch_size=32, shuffle=True):
+def get_loader(mdata, batch_size=128, shuffle=True):
     """
     Creates a DataLoader for the multimodal dataset with Leiden clusters computed using WNN as labels.
 
@@ -84,3 +84,6 @@ def get_loader(mdata, batch_size=32, shuffle=True):
     """
     dataset = MultiModalDataset(mdata)
     return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
+
+def get_dataset(mdata):
+    return MultiModalDataset(mdata)

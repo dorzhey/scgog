@@ -75,9 +75,9 @@ class DataPreprocessor():
         mdata['atac'].layers["counts"] = mdata['atac'].X
         ac.pp.tfidf(mdata['atac'], scale_factor=None)
         ac.tl.lsi(mdata['atac'])
-        mdata['atac'].obsm['X_lsi'] = mdata['atac'].obsm['X_lsi'][:,1:]
-        mdata['atac'].varm["LSI"] = mdata['atac'].varm["LSI"][:,1:]
-        mdata['atac'].uns["lsi"]["stdev"] = mdata['atac'].uns["lsi"]["stdev"][1:]
+        # mdata['atac'].obsm['X_lsi'] = mdata['atac'].obsm['X_lsi'][:,1:]
+        # mdata['atac'].varm["LSI"] = mdata['atac'].varm["LSI"][:,1:]
+        # mdata['atac'].uns["lsi"]["stdev"] = mdata['atac'].uns["lsi"]["stdev"][1:]
         
 
     def merge_ann_data(self, file_path: str) -> mu.MuData:
@@ -108,9 +108,9 @@ class DataPreprocessor():
         mdata['atac'].var = pd.merge(mdata['atac'].var, aggregated, on='interval', how='left')
 
         # Update the var_names if necessary
-        for col in ['gene', 'distance', 'peak_type']:
-            if col in mdata['atac'].var.columns:
-                mdata['atac'].var[col] = mdata['atac'].var[col].apply(lambda x: str(x) if not pd.isna(x) else '')
+        # for col in ['gene', 'distance', 'peak_type']:
+        #    if col in mdata['atac'].var.columns:
+        #        mdata['atac'].var[col] = mdata['atac'].var[col].apply(lambda x: str(x) if not pd.isna(x) else '')
     
     # def save_data(self):
     #     self.mdata.write('mudata.h5mu')

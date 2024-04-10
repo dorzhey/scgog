@@ -7,10 +7,9 @@ from sklearn.linear_model import LogisticRegression
 import pandas as pd
 import muon as mu
 
-# Assuming 'get_clustering_based_loader' returns a DataLoader for our dataset
-from scgog.data_loader import get_loader
+from data_loader import get_loader
 
-def benchmark_models(mdata, batch_size=32, shuffle=True):
+def benchmark_models(mdata, test_size = 0.2, random_state=42):
     """
     Benchmarks several ML models on a dataset with clustering-based labels.
 
@@ -21,7 +20,7 @@ def benchmark_models(mdata, batch_size=32, shuffle=True):
     
     
     # Load the dataset
-    loader = get_loader(mdata, batch_size, shuffle)
+    loader = get_loader(mdata)
 
     # Convert DataLoader to numpy arrays for scikit-learn
     features, labels = next(iter(loader))
@@ -29,7 +28,7 @@ def benchmark_models(mdata, batch_size=32, shuffle=True):
     labels = labels.numpy()
 
     # Split the dataset
-    X_train, X_test, y_train, y_test = train_test_split(features, labels, test_size=0.2, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(features, labels, test_size=test_size, random_state=random_state)
 
     # Define models to benchmark
     models = {
