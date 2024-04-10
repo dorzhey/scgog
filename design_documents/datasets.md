@@ -6,7 +6,7 @@ in .tsv format
 
 # Real dataset for answering a biological question using the tool
 
-PBMC from a healthy donor - granulocytes removed through cell sorting (3k) [link] (https://support.10xgenomics.com/single-cell-multiome-atac-gex/datasets/1.0.0/pbmc_granulocyte_sorted_3k)
+PBMC from a healthy donor - granulocytes removed through cell sorting (3k) [link](https://support.10xgenomics.com/single-cell-multiome-atac-gex/datasets/1.0.0/pbmc_granulocyte_sorted_3k)
 
 Single Cell Multiome ATAC + Gene Exp. Dataset by Cell Ranger ARC 1.0.0
 
