@@ -5,17 +5,18 @@ import os
 def visualize_umap(mdata, saved=True):
     file_name='umap_plot.png'
     output_dir='./plots'
+    if "leiden_wnn" not in mdata.obs:
+        # compute the neighbors for only rna
+        sc.pp.neighbors(mdata['rna'], n_neighbors=10, n_pcs=20)
+        # compute the neighbors for only atac
+        sc.pp.neighbors(mdata['atac'], use_rep="X_lsi", n_neighbors=10, n_pcs=20)
+        mu.pp.neighbors(mdata, key_added='wnn')
+        mu.tl.umap(mdata, neighbors_key='wnn', random_state=10)
+        # save the umap coordinates
+        mdata.obsm["X_wnn_umap"] = mdata.obsm["X_umap"]
+        # cluster the cells with leiden
+        sc.tl.leiden(mdata, resolution=.3, neighbors_key='wnn', key_added='leiden_wnn')
     
-    # compute the neighbors for only rna
-    sc.pp.neighbors(mdata['rna'], n_neighbors=10, n_pcs=20)
-    # compute the neighbors for only atac
-    sc.pp.neighbors(mdata['atac'], use_rep="X_lsi", n_neighbors=10, n_pcs=20)
-    mu.pp.neighbors(mdata, key_added='wnn')
-    mu.tl.umap(mdata, neighbors_key='wnn', random_state=10)
-    # save the umap coordinates
-    mdata.obsm["X_wnn_umap"] = mdata.obsm["X_umap"]
-    # cluster the cells with leiden
-    sc.tl.leiden(mdata, resolution=.3, neighbors_key='wnn', key_added='leiden_wnn')
     file_path = os.path.join(output_dir, file_name)
     # plot the leiden clusters with umap
     if saved:

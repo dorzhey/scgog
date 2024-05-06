@@ -7,19 +7,40 @@ import os
 import warnings
 
 class DataPreprocessor():
-    def __init__(self, h5_file_path, ann_file_path) -> None:
+    def __init__(self, h5_file_path = None, ann_file_path = None, genome_file_path = None):
+        file_dir = os.path.dirname(__file__)
+        self.save_path = os.path.join(file_dir,'data/')
+
+        if h5_file_path is None or ann_file_path is None:
+            data_path = os.path.join(file_dir, '..', '..', '..', 're_design', '10x_data')
+            h5_file_path = os.path.join(data_path, 'pbmc_granulocyte_sorted_3k_filtered_feature_bc_matrix.h5')
+            ann_file_path = os.path.join(data_path, "pbmc_granulocyte_sorted_3k_atac_peak_annotation.tsv")
+            genome_file_path = os.path.join(data_path, 'refdata-gex-GRCh38-2020-A','fasta', 'genome.fa')
+        
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             self.mdata = mu.read_10x_h5(h5_file_path)
-        print("After reading object has ", self.mdata.shape[0], "observations", self.mdata.shape[1], "variables")
+
         self.mdata.var_names_make_unique()
-        print("After make_unique object has ", self.mdata.shape[0], "observations", self.mdata.shape[1], "variables")
+        print("> After make_unique, object has", self.mdata.shape[0], "observations", self.mdata.shape[1], "variables")
+        
         self.quality_control()
-        print("After quality control object has ", self.mdata.shape[0], "observations", self.mdata.shape[1], "variables")
+        print("> After quality control, object has", self.mdata.shape[0], "observations", self.mdata.shape[1], "variables")
+        
         self.normalize_data()
-        print("After normalization object has ", self.mdata.shape[0], "observations", self.mdata.shape[1], "variables")
+        print("> After normalization, object has", self.mdata.shape[0], "observations", self.mdata.shape[1], "variables")
+        
         self.merge_ann_data(ann_file_path)
-        print("After merging with annotation object has ", self.mdata.shape[0], "observations", self.mdata.shape[1], "variables")
+        print("> After merging with annotation, object has", self.mdata.shape[0], "observations", self.mdata.shape[1], "variables")
+
+        if genome_file_path is not None:
+            import pychromvar as pc
+            self.add_peak_sequence(genome_file_path)
+            print("> After adding sequences, object has", self.mdata.shape[0], "observations", self.mdata.shape[1], "variables")
+
+            self.cluster_gene = self.create_cluster_gene()
+            saved_file_path = self.create_final_dataset()
+            print("> Resulting file is save at", saved_file_path)
 
     def quality_control(self) -> mu.MuData:
         """
@@ -32,9 +53,9 @@ class DataPreprocessor():
         - mu.MuData: MuData object after applying quality control.
         """
         mdata = self.mdata
-
-        # Compute QC metrics for RNA
+        # annotate the group of mitochondrial genes as 'mt'
         mdata['rna'].var['mt'] = mdata['rna'].var_names.str.startswith('MT-')
+        # Compute QC metrics for RNA
         sc.pp.calculate_qc_metrics(mdata['rna'], qc_vars=['mt'], percent_top=None, log1p=False, inplace=True)
 
         mu.pp.filter_var(mdata['rna'], 'n_cells_by_counts', lambda x: x >= 3)
@@ -73,12 +94,10 @@ class DataPreprocessor():
         sc.tl.pca(mdata['rna'], svd_solver='arpack')
 
         mdata['atac'].layers["counts"] = mdata['atac'].X
+        # Transform peak counts with TF-IDF (Term Frequency - Inverse Document Frequency)
         ac.pp.tfidf(mdata['atac'], scale_factor=None)
+        # Run Latent Semantic Indexing
         ac.tl.lsi(mdata['atac'])
-        # mdata['atac'].obsm['X_lsi'] = mdata['atac'].obsm['X_lsi'][:,1:]
-        # mdata['atac'].varm["LSI"] = mdata['atac'].varm["LSI"][:,1:]
-        # mdata['atac'].uns["lsi"]["stdev"] = mdata['atac'].uns["lsi"]["stdev"][1:]
-        
 
     def merge_ann_data(self, file_path: str) -> mu.MuData:
         """
@@ -92,36 +111,77 @@ class DataPreprocessor():
         - mu.MuData: A MuData object containing normalized and scaled data.
         """
 
-        # read cellranger peak annotation with vectorized interval creation
-        peak_annotation = pd.read_csv(file_path, sep='\t')
-        peak_annotation['interval'] = peak_annotation['chrom'] + ':' + peak_annotation['start'].astype(str) + '-' + peak_annotation['end'].astype(str)
-
-        # Using groupby to handle duplicates and aggregate values
-        aggregated = peak_annotation.groupby('interval').agg({
-        'gene': lambda x: ';'.join(x.dropna().astype(str)),
-        'distance': lambda x: ';'.join(map(str, x.dropna())),
-        'peak_type': lambda x: ';'.join(x.dropna().astype(str))
-        }).reset_index()
-
-        # Merge directly without creating extra DataFrames
         mdata = self.mdata
-        mdata['atac'].var = pd.merge(mdata['atac'].var, aggregated, on='interval', how='left')
+        peak_annotation = pd.read_csv(file_path, sep='\t')
+        # Parse peak annotation file and add it to the .uns[“atac”][“peak_annotation”]
+        ac.tl.add_peak_annotation(mdata, peak_annotation)
 
-        # Update the var_names if necessary
-        # for col in ['gene', 'distance', 'peak_type']:
-        #    if col in mdata['atac'].var.columns:
-        #        mdata['atac'].var[col] = mdata['atac'].var[col].apply(lambda x: str(x) if not pd.isna(x) else '')
+        
+    def add_peak_sequence(self, genome_file):
+        mdata = self.mdata
+        mdata['atac'].X = mdata['atac'].layers["counts"]
+        # adds mdata['atac'].uns['peak_seq']
+        pc.add_peak_seq(mdata, genome_file=genome_file, delimiter=":|-")
+
+
+    def create_cluster_gene(self):
+        mdata = self.mdata
+        
+        # compute the neighbors for only rna
+        sc.pp.neighbors(mdata['rna'], n_neighbors=10, n_pcs=20)
+        # compute the neighbors for only atac
+        sc.pp.neighbors(mdata['atac'], use_rep="X_lsi", n_neighbors=10, n_pcs=20)
+        mu.pp.neighbors(mdata, key_added='wnn')
+        mu.tl.umap(mdata, neighbors_key='wnn', random_state=10)
+
+        # cluster the cells with leiden
+        sc.tl.leiden(mdata, resolution=.3, neighbors_key='wnn', key_added='leiden_wnn')
+        mdata['rna'].obs['leiden_wnn'] = mdata.obs['leiden_wnn']
+        # rank the differentially expressed genes  
+        sc.tl.rank_genes_groups(mdata.mod['rna'], 'leiden_wnn', method='wilcoxon')
+        # transform into format gene,cluster and take only statistically significant genes
+        filter_by_pvalue = pd.DataFrame(mdata.mod['rna'].uns['rank_genes_groups']['pvals_adj']) < 0.05
+        de_rna = pd.DataFrame(mdata.mod['rna'].uns['rank_genes_groups']['names'])[filter_by_pvalue]
+        gene_cluster  = {}
+        # flatten into list of unique genes in format gene:cluster 
+        for _, row in de_rna.iterrows():
+            for cluster, gene in enumerate(row):
+                if gene not in gene_cluster:
+                    gene_cluster[gene] = int(cluster)
+        
+        self.gene_cluster = gene_cluster
     
-    # def save_data(self):
-    #     self.mdata.write('mudata.h5mu')
-    #     file_dir = os.path.dirname(__file__)
-    #     save_path = os.path.join(file_dir, 'mudata.h5mu')
-    #     return save_path
+    def create_final_dataset(self):
+        mdata = self.mdata
+        #transfer peak sequences list to var for future merge
+        mdata['atac'].var['peak_seq'] = mdata.mod['atac'].uns['peak_seq']
+        # take annonation data
+        ann_data = mdata.mod['atac'].uns['atac']['peak_annotation']
+        # get gene as column not index
+        ann_data = ann_data.reset_index()
+        # merge atac modality with annotation based on peak id in format chr#:start-end
+        full_data = mdata['atac'].var.merge( ann_data, left_on='interval', right_on='peak', how='left')
+        # subset
+        full_data = full_data[['gene','peak_type','peak_seq']]
+        # new column cluster by mapping genes to cluster with help of gene_cluster dict
+        full_data['cluster'] = full_data['gene'].map(self.gene_cluster)
+        # clean
+        full_data = full_data[full_data.cluster.notna()]
+        full_data.cluster = full_data.cluster.astype(int) 
+        # for data constitencty with legacy code
+        full_data.rename(columns={'peak_type':'peaktype'}, inplace=True)
+
+        file_path = os.path.join(self.save_path, 'promoter-distal_seq_rna_class.csv')
+        print("File statistics")
+        print(full_data['cluster'].value_counts())
+        print(full_data['peaktype'].value_counts())
+        full_data.to_csv(file_path, index=False)
+        return file_path
 
 
 
-def preprocess_omics_data(h5_file_path, ann_file_path):
-    processor = DataPreprocessor(h5_file_path, ann_file_path)
+def preprocess_omics_data(h5_file_path, ann_file_path, genome_file_path):
+    processor = DataPreprocessor(h5_file_path, ann_file_path, genome_file_path)
     return processor.mdata
     
 
